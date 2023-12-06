@@ -1,147 +1,127 @@
 import java.io.*;
 import java.util.*;
 
-
-public class DayFivePartTwo
+public class DayFive
 {
-    String[] seeds;
     
-    ArrayList<long[]> seedRanges = new ArrayList<long[]>();
-    ArrayList<long[]> rangeDestinations = new ArrayList<long[]>();
+    ArrayList<String> wholeFile = new ArrayList<String>();
+    
+    ArrayList<Seed> seedList = new ArrayList<Seed>();
+    
     ArrayList<ArrayList<long[]>> maps = new ArrayList<ArrayList<long[]>>();
     
-    public void partTwo(){
-        
-        parseFile();
-        convertSeedToRange();
-        
-        for(int i = 0; i < seedRanges.size(); i++){
-            long[] location = findLocationRange(seedRanges.get(i));
-            rangeDestinations.add(location);
-        }
-        
-        long min = rangeDestinations.get(0)[0];
-        for(int i = 0; i < rangeDestinations.size(); i++){
-            if(rangeDestinations.get(i)[0] < min){
-                min = rangeDestinations.get(i)[0];
-            }
-        }
-        System.out.println(min);
-    }
+    long min = -1;
     
-    public long[] findLocationRange(long[] seedRange){
-        long[] currRange = seedRange;
-        for(int i = 0; i < maps.size(); i++){
-            currRange = matchAndClipMap(currRange, i);
-        }
-        
-        return currRange;
-    }
-    
-    public long[] matchAndClipMap(long[] currRange, int map){
-        long[] mappedRange = new long[2];
-            
-        for(int i = 0; i < maps.get(map).size(); i++){
-            long range = maps.get(map).get(i)[2];
-            long mapStart = maps.get(map).get(i)[0]; long destB = mapStart + range -1;
-            long sourceStart = maps.get(map).get(i)[1]; 
-            long a = currRange[0]; long b = currRange[1];
-            
-            long sourceEnd = sourceStart + range-1;
-            System.out.println("--------------------------------------------------------------------------------------");
-            System.out.println("Current Range: "+a +", "+b);
-            System.out.println("Current sourceStart: "+sourceStart + " Current sourceEnd: " + sourceEnd);
-            System.out.println("Range: " + range);
-            System.out.println("Destination start: " +mapStart + " Max Destination: " +destB);
-            
-            // CASE: FULLY CONTAINED
-            
-            if( a >= sourceStart && b <= sourceEnd){
-                System.out.println("Fully Contained");
-                mappedRange[0] = mapStart + (a - sourceStart);
-                mappedRange[1] = mapStart + (b - sourceStart);
-                
-                return mappedRange;
+    public void readFile(){
+        try{
+            BufferedReader br = new BufferedReader(new FileReader("input5.txt"));
+            String nextLine = br.readLine();
+            while(nextLine != null){
+                wholeFile.add(nextLine);
+                nextLine = br.readLine();
             }
-            //CASE SPLIT LEFT
-            else if(a < sourceStart && b <= sourceEnd && b >= sourceStart){
-                System.out.println("Split left");
-                long splitA = a;
-                long splitB = sourceStart - 1;
-                long[] split = {splitA, splitB};
-                mappedRange[0] = mapStart;
-                mappedRange[1] = mapStart + b - sourceStart;    
-                seedRanges.add(split);
-                return mappedRange;
-            }
-            //CASE SPLIT RIGHT
-            else if(a >= sourceStart && b > sourceEnd && a <= sourceEnd){
-                System.out.println("Split Right");
-                long splitA = sourceEnd+1;
-                long splitB = b;
-                long[] split = {splitA, splitB};
-                mappedRange[0] = mapStart + a - sourceStart;
-                mappedRange[1] = mapStart + sourceEnd - sourceStart;            
-                seedRanges.add(split);
-                return mappedRange;
-            }
-            //CASE SPLIT BOTH
-            else if(a < sourceStart && b > sourceEnd){
-                System.out.println("Split Both");
-                long splitA = a;
-                long splitB = sourceStart-1;
-                long[] split1 = {splitA, splitB};
-                mappedRange[0] = mapStart;
-                mappedRange[1] = mapStart + sourceEnd - sourceStart;
-                splitA = sourceEnd + 1;
-                splitB = b;
-                long[] split2 = {splitA, splitB};
-                seedRanges.add(split1);
-                seedRanges.add(split2);
-            }
-        }
-        return currRange;
-    }
-    
-    public void convertSeedToRange(){
-        for(int i = 0; i < seeds.length; i = i+2){
-            long seedStart = Long.parseLong(seeds[i]);
-            long seedEnd = Long.parseLong(seeds[i+1]);
-            long[] seedRange = {seedStart, seedStart + seedEnd - 1};
-            seedRanges.add(seedRange);
+        }catch(Exception e){
+            e.printStackTrace();
         }
     }
-    
     
     public void parseFile(){
-        ReadFile fr = new ReadFile();
-        ArrayList<String> wholeFile = fr.readFile();
-        int mapIndex = -1;
+        readFile();
+        int parseMapIndex = -1;
         for(String line : wholeFile){
-            String tagparts[] = line.split(":")[0].split(" ");
-            String tag = tagparts[tagparts.length - 1];
-            if(!line.equalsIgnoreCase("")){
-                switch(tag){
-                    case "seeds":
-                        seeds = line.split(":")[1].split(" ");
-                        seeds = Arrays.copyOfRange(seeds, 1, seeds.length);
-                        break;
-                    case "map":
-                        maps.add(new ArrayList<long[]>());
-                        mapIndex++;
-                        break;
-                    default:
-                        String[] strMapNums = line.split(" ");
-                        long[] mapNums = new long[strMapNums.length];
-                        for(int i = 0; i < strMapNums.length; i++){
-                            if(!strMapNums[i].equalsIgnoreCase("")){
-                                mapNums[i] = Long.parseLong(strMapNums[i].trim());
-                            }
-                        }
-                        maps.get(mapIndex).add(mapNums);
-                        break;
+            
+            if(line.split(":")[0].equalsIgnoreCase("seeds")){
+                line = line.trim();
+                String[] lineSplit = line.split(":")[1].trim().split(" ");
+                for(int i = 0; i < lineSplit.length; i = i + 2){
+                    Seed seed = new Seed();
+                    seed.start = Long.parseLong(lineSplit[i]);
+                    seed.end = seed.start + Long.parseLong(lineSplit[i+1]) - 1;
+                    seed.mapIndex = 0;
+                    seedList.add(seed);
                 }
+                
+            }
+            else if(line.split(":")[0].contains("map")){
+                parseMapIndex = parseMapIndex + 1;
+                maps.add(new ArrayList<long[]>());
+            }else if(line.equals("")){
+                
+            }else{
+                String[] nums = line.split(" ");
+                long[] mapNums = new long[nums.length]; 
+                for(int i = 0; i < nums.length; i++){
+                    mapNums[i] = Long.parseLong(nums[i]);
+                }
+                maps.get(parseMapIndex).add(mapNums);
             }
         }
+    }
+    
+    public void partTwo(){
+        long start = System.nanoTime();
+        parseFile();
+        
+        for(int i = 0; i < seedList.size(); i++){ 
+            //FOR EACH SEED OR SEED SPLIT IN THE LIST
+            Seed currSeed = seedList.get(i);
+            
+            
+            for(int j = currSeed.mapIndex; j < maps.size(); j++){
+                //FOR EACH MAP SET
+                currSeed = applyMap(currSeed, j);
+                
+            }
+            if(currSeed.start < min || min == -1){
+                min = currSeed.start;
+            }
+        }
+        long end = System.nanoTime();
+        System.out.println(min);
+        System.out.println( (end - start));
+    }
+    
+    public Seed applyMap(Seed seed, int mapIndex){
+        //ITERATE OVER EACH RANGE IN A MAP SET AND RETURN THE MAPPED RANGE FROM THE SEED RANGE PASSED
+        ArrayList<long[]> currMap = maps.get(mapIndex);
+        //a: seed range start    b: seed range end    mapStart: start of mapped location    source start: start of affected map range    source end: end of affected map range
+        
+        long a = seed.start; long b = seed.end; 
+        
+        Seed mappedRange = seed;
+        
+        for(int i = 0; i < currMap.size(); i++){
+            long mapStart = currMap.get(i)[0]; long sourceStart = currMap.get(i)[1]; long sourceEnd = sourceStart + currMap.get(i)[2] - 1;
+            //CASE: Fully Contained
+            if(a >= sourceStart && b <= sourceEnd){
+                mappedRange = new Seed(mapStart + a - sourceStart, mapStart + b - sourceStart, mapIndex+1);
+                return mappedRange;
+            }
+            //CASE: Split on left side
+            else if(a < sourceStart && b <= sourceEnd && b >= sourceStart){
+                Seed split = new Seed(a, sourceStart - 1, mapIndex);
+                mappedRange = new Seed(mapStart, mapStart + b - sourceStart, mapIndex+1);
+                seedList.add(split);
+                return mappedRange;
+            }
+            //CASE: Split on right side
+            else if(a >= sourceStart && b > sourceEnd && a <= sourceEnd){
+                Seed split = new Seed(sourceEnd+1, b, mapIndex);
+                mappedRange = new Seed(mapStart + a - sourceStart, mapStart + sourceEnd - sourceStart, mapIndex + 1);
+                seedList.add(split);
+                return mappedRange;
+            }
+            //CASE: Split on both sides
+            else if(a < sourceStart && b > sourceEnd){
+                Seed split1 = new Seed(a, sourceStart-1, mapIndex);
+                Seed split2 = new Seed(sourceEnd+1, b, mapIndex);
+                mappedRange = new Seed(mapStart, mapStart + sourceEnd - sourceStart, mapIndex + 1);
+                seedList.add(split1); seedList.add(split2);
+                return mappedRange;
+            }
+        }
+        //CASE: Seed wasn't mapped onto any of the ranges in the map set, map to default range on next map.
+        mappedRange.mapIndex = mappedRange.mapIndex + 1;
+        return mappedRange;
     }
 }
